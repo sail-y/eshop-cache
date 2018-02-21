@@ -102,3 +102,85 @@ bin/kafka-console-producer.sh --broker-list 192.168.2.201:9092,192.168.2.202:909
 > {"serviceId":"productInfoService","productId":1}
 > {"serviceId":"shopInfoService","shopId":1}
 ```
+
+## zookeeper分布式锁缓存重建
+
+
+### 主动更新
+
+监听kafka消息队列，获取到一个商品变更的消息之后，去哪个源服务中调用接口拉取数据，更新到ehcache和redis中。
+
+先获取分布式锁，然后才能更新redis，同时更新时要比较时间版本
+
+`KafkaMessageProcessor.java`
+
+### 被动重建
+
+直接读取源头数据，直接返回给nginx，同时推送一条消息到一个队列，后台线程异步消费
+
+后台现成负责先获取分布式锁，然后才能更新redis，同时要比较时间版本
+
+`CacheController.getProductInfo`
+
+`RebuildCacheQueue`
+
+`RebuildCacheThread`
+
+### 测试
+
+
+
+我们要模拟的场景是kafka先接收到缓存更新请求，然后获取分布式锁，拿到锁以后将数据写入缓存中，然后在没有保存成功的时候。
+
+CacheController缓存服务也接受到一条更新缓存的请求，也去获取分布式锁，
+并将数据更新请求放入一个队列中，此时在kafka的代码中模拟卡顿10秒，方便我们操作。
+然后等到kafka将数据写入缓存以后释放分布式锁，CacheController拿到分布式锁，取出缓存内容进行比较，如果自己的数据比较新，就写入，否则就放弃。
+
+
+
+下面开始测试：
+
+
+**先将redis的缓存清除**，然后给kafka发送一条消息，为了避免程序运行过快，代码里设置了sleep10秒。
+
+```bash
+bin/kafka-console-producer.sh --broker-list 192.168.2.201:9092,192.168.2.202:9092,192.168.2.203:9092 --topic cache-message
+> {"serviceId":"productInfoService","productId":2}
+```
+
+接着调用缓存服务接口：http://localhost:8080/getProductInfo?productId=2
+
+可以看到控制打印如下，kafka收到缓存更新请求，获取分布式锁(模拟10秒正在改写缓存)，接着CacheController也收到请求，阻塞自旋获取分布式锁中，
+然后kafka写入完毕，释放分布式锁。CacheController获取到锁，这个时候发现redis里面有数据了，取出来对比一下，自己的数据比较新，再次写入覆盖。
+
+```text
+============kafka接受到消息：{"serviceId":"productInfoService","productId":2}
+success to acquire lock for product [id=2]
+existed productInfo is null
+================从redis从获取缓存，商品信息=null
+================从ehcache从获取缓存，商品信息=null
+the 1 times try to acquire lock for product[id=2]....
+the 2 times try to acquire lock for product[id=2]....
+the 3 times try to acquire lock for product[id=2]....
+the 4 times try to acquire lock for product[id=2]....
+the 5 times try to acquire lock for product[id=2]....
+the 6 times try to acquire lock for product[id=2]....
+the 7 times try to acquire lock for product[id=2]....
+the 8 times try to acquire lock for product[id=2]....
+===================获取刚保存到本地缓存的商品信息：ProductInfo{id=2, name='iphone7手机', price=5599.0, pictureList='a.jpg,b.jpg', specification='iphone7的规格', service='iphone7的售后服务', color='红色,白色,黑色', size='5.5', shopId=2, modifiedTime='2018-02-21 21:11:34'}
+release the lock for product[id=2]
+success to acquire lock for product [id=2] after 8 times try....
+current date=2018-02-21 22:11:34 is after existed date[2018-02-21 21:11:34]
+release the lock for product[id=2]
+
+```
+
+最后我们检查一下redis里面的数据，是不是22:11的比较新的一条数据。
+
+```bash
+redis-cli -h 192.168.2.201 -p 7001 -c --raw
+192.168.2.201:7001> get product_info_2
+-> Redirected to slot [4902] located at 192.168.2.202:7004
+{"color":"红色,白色,黑色","id":2,"modifiedTime":"2018-02-21 22:11:34","name":"iphone7手机","pictureList":"a.jpg,b.jpg","price":5599.0,"service":"iphone7的售后服务","shopId":2,"size":"5.5","specification":"iphone7的规格"}
+```
+

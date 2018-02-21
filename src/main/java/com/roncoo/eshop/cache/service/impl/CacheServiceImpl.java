@@ -7,12 +7,8 @@ import com.roncoo.eshop.cache.service.CacheService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import redis.clients.jedis.JedisCluster;
-
-import javax.annotation.Resource;
 
 /**
  * 缓存Service实现类
@@ -111,5 +107,41 @@ public class CacheServiceImpl implements CacheService {
     public void saveShopInfo2RedisCache(ShopInfo shopInfo) {
         String key = "shop_info_" + shopInfo.getId();
         redisTemplate.opsForValue().set(key, JSONObject.toJSONString(shopInfo));
+    }
+
+
+    /**
+     * 从Redis从获取商品信息
+     *
+     * @param id
+     * @return
+     */
+    @Override
+    public ProductInfo getProductInfoFromRedisCache(Long id) {
+
+        String key = "product_info_" + id;
+        String json = redisTemplate.opsForValue().get(key);
+        if (json != null) {
+            return JSONObject.parseObject(json, ProductInfo.class);
+        }
+
+        return null;
+    }
+
+    /**
+     * 从Redis中获取商品店铺信息
+     *
+     * @param id
+     * @return
+     */
+    @Override
+    public ShopInfo getShopInfoFromRedisCache(Long id) {
+        String key = "shop_info_" + id;
+        String json = redisTemplate.opsForValue().get(key);
+        if (json != null) {
+            return JSONObject.parseObject(json, ShopInfo.class);
+        }
+
+        return null;
     }
 }
