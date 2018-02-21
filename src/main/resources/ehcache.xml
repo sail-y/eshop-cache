@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd"
+         updateCheck="false">
+
+    <!-- ehcache其实是支持内存+磁盘+对外内存几个层级的缓存-->
+    <!--在这里设置一下，但是一般是不用的-->
+    <diskStore path="java.io.tmpdir/Tmp_EhCache" />
+
+    <!--这里设置默认的缓存策略-->
+    <!--如果没有找到指定的缓存策略，就用默认的-->
+    <!--如果external是true，那么timeout就没有效果，缓存就会一直存在，一般默认是false-->
+    <!--maxElementsInMemory：内存中缓存多个条目，需要自己去计算，比如你要缓存多少MB，多少G，除以每个对象的大小，计算出多少个对象-->
+    <!--overflowToDisk：如果内存不够的话， 是否要溢出到磁盘-->
+    <!--diskPersistent：是否启用磁盘持久化的机制，在jvm崩溃的时候和重启之间，一般不用-->
+    <!--timeToIdleSeconds：对象最大的闲置时间，如果超出闲置的时间，可能会过期，这里不用-->
+    <!--timeToLiveSeconds：对象最多存活的时间，超过时间缓存都过期，这里不用-->
+    <!--memoryStoreEvictionPolicy：当缓存数量达到了最大的指定条目数的时候，需要采用一定的算法，从缓存中清除一批数据，一般用LRU算法（最近最少使用算法，最近一段时间内，最少使用的那些数据，就被干掉了）-->
+    <defaultCache
+            eternal="false"
+            maxElementsInMemory="1000"
+            overflowToDisk="false"
+            diskPersistent="false"
+            timeToIdleSeconds="300"
+            timeToLiveSeconds="0"
+            memoryStoreEvictionPolicy="LRU" />
+
+    <!-- 手动指定的缓存策略 -->
+    <!-- 一个应用可能要缓存很多种不同的数据，比如说商品信息，或者是其他的一些数据 -->
+    <!-- 对不同的数据，缓存策略可以在这里配置多种 -->
+    <cache
+            name="local"
+            eternal="false"
+            maxElementsInMemory="1000"
+            overflowToDisk="false"
+            diskPersistent="false"
+            timeToIdleSeconds="300"
+            timeToLiveSeconds="0"
+            memoryStoreEvictionPolicy="LRU" />
+
+</ehcache>
