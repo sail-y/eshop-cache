@@ -1,6 +1,7 @@
 package com.roncoo.eshop.cache.listener;
 
 import com.roncoo.eshop.cache.kafka.KafkaConsumer;
+import com.roncoo.eshop.cache.prewarm.CachePreWarmThread;
 import com.roncoo.eshop.cache.rebuild.RebuildCacheThread;
 import com.roncoo.eshop.cache.spring.SpringContext;
 import com.roncoo.eshop.cache.zk.ZooKeeperSession;
@@ -28,6 +29,8 @@ public class InitListener implements ServletContextListener {
 
 
         ZooKeeperSession.init();
+
+
     }
 
     @Override
