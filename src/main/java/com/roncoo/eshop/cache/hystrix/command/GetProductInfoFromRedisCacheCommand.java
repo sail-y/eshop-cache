@@ -3,6 +3,7 @@ package com.roncoo.eshop.cache.hystrix.command;
 import com.alibaba.fastjson.JSONObject;
 import com.netflix.hystrix.HystrixCommand;
 import com.netflix.hystrix.HystrixCommandGroupKey;
+import com.netflix.hystrix.HystrixCommandProperties;
 import com.roncoo.eshop.cache.model.ProductInfo;
 import com.roncoo.eshop.cache.spring.SpringContext;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -18,8 +19,13 @@ public class GetProductInfoFromRedisCacheCommand extends HystrixCommand<ProductI
     private Long productId;
 
     public GetProductInfoFromRedisCacheCommand(Long productId) {
-
-        super(HystrixCommandGroupKey.Factory.asKey("RedisGroup"));
+        super(Setter.withGroupKey(HystrixCommandGroupKey.Factory.asKey("RedisGroup"))
+                .andCommandPropertiesDefaults(HystrixCommandProperties.Setter()
+                        .withExecutionTimeoutInMilliseconds(100)
+                        .withCircuitBreakerRequestVolumeThreshold(1000)
+                        .withCircuitBreakerErrorThresholdPercentage(70)
+                        .withCircuitBreakerSleepWindowInMilliseconds(60 * 1000))
+        );
         this.productId = productId;
     }
 
