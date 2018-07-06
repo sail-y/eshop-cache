@@ -38,7 +38,18 @@ public class GetProductInfoCommand extends HystrixCommand<ProductInfo> {
 
     @Override
     protected ProductInfo run() throws Exception {
-        String productInfoJSON = "{\"id\": " + productId + ", \"name\": \"iphone7手机\", \"price\": 5599, \"pictureList\":\"a.jpg,b.jpg\", \"specification\": \"iphone7的规格\", \"service\": \"iphone7的售后服务\", \"color\": \"红色,白色,黑色\", \"size\": \"5.5\", \"shopId\": 1, \"modifiedTime\": \"2017-01-01 12:01:00\"}";
-        return JSONObject.parseObject(productInfoJSON, ProductInfo.class);
+        if (productId == 100) {
+            // 模拟从源服务查询某个商品ID，没有查询到数据
+            // 在实际的生产环境中，就是没有查到数据，就写一个这样的数据返回
+
+            ProductInfo productInfo = new ProductInfo();
+            productInfo.setId(100L);
+            return productInfo;
+        } else {
+
+            String productInfoJSON = "{\"id\": " + productId + ", \"name\": \"iphone7手机\", \"price\": 5599, \"pictureList\":\"a.jpg,b.jpg\", \"specification\": \"iphone7的规格\", \"service\": \"iphone7的售后服务\", \"color\": \"红色,白色,黑色\", \"size\": \"5.5\", \"shopId\": 1, \"modifiedTime\": \"2017-01-01 12:01:00\"}";
+            return JSONObject.parseObject(productInfoJSON, ProductInfo.class);
+        }
+
     }
 }
